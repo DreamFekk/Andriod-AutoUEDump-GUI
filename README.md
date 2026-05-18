@@ -4,7 +4,7 @@ Android Unreal Engine Dumper with a Vulkan / ImGui overlay UI, dedicated game pr
 
 > Author: 曦曦 (DreamFekk) — https://github.com/DreamFekk
 > No reselling for profit / 禁止圈钱盗卖
-
+> QQ Group(群) 977186929
 [English](#english) | [中文](#中文)
 
 ---
