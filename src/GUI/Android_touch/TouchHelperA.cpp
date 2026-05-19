@@ -39,6 +39,7 @@ namespace Touch {
     // TouchOwner::System (i.e. the system path). -1 means "no press / not
     // tracked".
     static std::array<std::array<int, maxF>, maxE> finger_press_frame{};
+    static std::array<std::array<bool, maxF>, maxE> finger_forwarded_to_system{};
 
     static struct {
         input_event downEvent[2]{{{}, EV_KEY, BTN_TOUCH,       1}, {{}, EV_KEY, BTN_TOOL_FINGER, 1}};
@@ -65,45 +66,63 @@ namespace Touch {
 
     static spinlock lock;
 
-    void Upload() {
+    static bool ShouldUploadFinger(size_t deviceIndex, size_t fingerIndex, bool systemOnly) {
+        if (deviceIndex >= devices.size() || fingerIndex >= maxF)
+            return false;
+
+        const touchObj &finger = devices[deviceIndex].Finger[fingerIndex];
+        if (!finger.isDown)
+            return false;
+
+        if (!systemOnly)
+            return true;
+
+        return deviceIndex < maxE &&
+               fingerIndex < maxF &&
+               finger_owner[deviceIndex][fingerIndex] == TouchOwner::System;
+    }
+
+    static void UploadImpl(bool systemOnly) {
         static bool isFirstDown = true;
         int tmpCnt = 0, tmpCnt2 = 0;
-        for (auto &device: devices) {
-            for (auto &finger: device.Finger) {
-                if (finger.isDown) {
-                    if (tmpCnt2++ > 20) {
-                        goto finish;
-                    }
-                    input.event[tmpCnt].type = EV_ABS;
-                    input.event[tmpCnt].code = ABS_X;
-                    input.event[tmpCnt].value = (int) finger.pos.x;
-                    tmpCnt++;
+        for (size_t deviceIndex = 0; deviceIndex < devices.size(); ++deviceIndex) {
+            for (size_t fingerIndex = 0; fingerIndex < maxF; ++fingerIndex) {
+                if (!ShouldUploadFinger(deviceIndex, fingerIndex, systemOnly))
+                    continue;
 
-                    input.event[tmpCnt].type = EV_ABS;
-                    input.event[tmpCnt].code = ABS_Y;
-                    input.event[tmpCnt].value = (int) finger.pos.y;
-                    tmpCnt++;
-
-                    input.event[tmpCnt].type = EV_ABS;
-                    input.event[tmpCnt].code = ABS_MT_POSITION_X;
-                    input.event[tmpCnt].value = (int) finger.pos.x;
-                    tmpCnt++;
-
-                    input.event[tmpCnt].type = EV_ABS;
-                    input.event[tmpCnt].code = ABS_MT_POSITION_Y;
-                    input.event[tmpCnt].value = (int) finger.pos.y;
-                    tmpCnt++;
-
-                    input.event[tmpCnt].type = EV_ABS;
-                    input.event[tmpCnt].code = ABS_MT_TRACKING_ID;
-                    input.event[tmpCnt].value = finger.id;
-                    tmpCnt++;
-
-                    input.event[tmpCnt].type = EV_SYN;
-                    input.event[tmpCnt].code = SYN_MT_REPORT;
-                    input.event[tmpCnt].value = 0;
-                    tmpCnt++;
+                const touchObj &finger = devices[deviceIndex].Finger[fingerIndex];
+                if (tmpCnt2++ > 20) {
+                    goto finish;
                 }
+                input.event[tmpCnt].type = EV_ABS;
+                input.event[tmpCnt].code = ABS_X;
+                input.event[tmpCnt].value = (int) finger.pos.x;
+                tmpCnt++;
+
+                input.event[tmpCnt].type = EV_ABS;
+                input.event[tmpCnt].code = ABS_Y;
+                input.event[tmpCnt].value = (int) finger.pos.y;
+                tmpCnt++;
+
+                input.event[tmpCnt].type = EV_ABS;
+                input.event[tmpCnt].code = ABS_MT_POSITION_X;
+                input.event[tmpCnt].value = (int) finger.pos.x;
+                tmpCnt++;
+
+                input.event[tmpCnt].type = EV_ABS;
+                input.event[tmpCnt].code = ABS_MT_POSITION_Y;
+                input.event[tmpCnt].value = (int) finger.pos.y;
+                tmpCnt++;
+
+                input.event[tmpCnt].type = EV_ABS;
+                input.event[tmpCnt].code = ABS_MT_TRACKING_ID;
+                input.event[tmpCnt].value = finger.id;
+                tmpCnt++;
+
+                input.event[tmpCnt].type = EV_SYN;
+                input.event[tmpCnt].code = SYN_MT_REPORT;
+                input.event[tmpCnt].value = 0;
+                tmpCnt++;
             }
         }
         finish:
@@ -138,6 +157,14 @@ namespace Touch {
         } else {
             write(nowfd, input.event, sizeof(struct input_event) * tmpCnt);
         }
+    }
+
+    void Upload() {
+        UploadImpl(false);
+    }
+
+    static void UploadSystemTouches() {
+        UploadImpl(true);
     }
 
 
@@ -234,6 +261,7 @@ namespace Touch {
                                     ImGui::GetCurrentContext()
                                         ? ImGui::GetFrameCount()
                                         : -1;
+                                finger_forwarded_to_system[i][latest] = false;
                             }
                         }
                         continue;
@@ -326,8 +354,36 @@ namespace Touch {
                         if (callback) {
                             callback(&devices);
                         } else {
-                            Upload();
+                            UploadSystemTouches();
                         }
+                        if ((size_t) i < maxE && (size_t) latest < maxF) {
+                            finger_forwarded_to_system[i][latest] = true;
+                        }
+                    }
+
+                    // A quick tap outside ImGui may press and release before
+                    // a fresh NewFrame advances WantCaptureMouse. In that
+                    // case the sequence is still undecided at release time;
+                    // replay a synthetic system tap so non-UI clicks are not
+                    // swallowed.
+                    if (!readOnly && owner && *owner == TouchOwner::None && !nowDown &&
+                        (size_t) i < maxE && (size_t) latest < maxF &&
+                        !finger_forwarded_to_system[i][latest] &&
+                        (!imguiReady || !wantCapture)) {
+                        *owner = TouchOwner::System;
+                        device.Finger[latest].isDown = true;
+                        if (callback) {
+                            callback(&devices);
+                        } else {
+                            UploadSystemTouches();
+                        }
+                        device.Finger[latest].isDown = false;
+                        if (callback) {
+                            callback(&devices);
+                        } else {
+                            UploadSystemTouches();
+                        }
+                        finger_forwarded_to_system[i][latest] = true;
                     }
 
                     // Release frame has been dispatched; reset ownership
@@ -336,6 +392,7 @@ namespace Touch {
                         *owner = TouchOwner::None;
                         if ((size_t) i < maxE && (size_t) latest < maxF) {
                             finger_press_frame[i][latest] = -1;
+                            finger_forwarded_to_system[i][latest] = false;
                         }
                     }
                     continue;
