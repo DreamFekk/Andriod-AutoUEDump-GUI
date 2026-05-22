@@ -39,7 +39,6 @@ public:
     {
         return false;
     }
-
     uintptr_t GetGUObjectArrayPtr() const override
     {
         std::vector<std::pair<std::string, int>> idaPatterns = {
@@ -153,6 +152,7 @@ public:
 
         return vm_rpm_ptr<uintptr_t>((void *)GName);
     }
+
     uint8_t *GetNameEntry(int32_t id) const override
     {
         if (id < 0)
@@ -201,13 +201,13 @@ public:
             // 读取解密密钥 (FNamePool + 65600)
             uint64_t shift = vm_rpm_ptr<uint64_t>((void *)(namesPtr + 65600));
 
-            // 将块指针转换为整数以便进行异或操作
+            // 将块指针转换为整数以便进行异或操�?
             uintptr_t chunkInt = reinterpret_cast<uintptr_t>(chunck);
 
             // 应用异或解密
             chunkInt ^= shift;
 
-            // 转换回指针
+            // 转换回指�?
             chunck = reinterpret_cast<uint8_t *>(chunkInt);
         }
         return (chunck + chunck_offset);

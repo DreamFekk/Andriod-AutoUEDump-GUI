@@ -38,25 +38,9 @@ public:
     {
         return false;
     }
-
     uintptr_t GetGUObjectArrayPtr() const override
     {
-        std::vector<std::pair<std::string, int>> idaPatterns = {
-            {"? ? ? 95 ? ? ? B4 ? ? ? ? ? ? ? 91 E1 03 16 AA ? ? ? 95", 8},
-        };
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-
-        for (const auto &it : idaPatterns)
-        {
-            std::string ida_pattern = it.first;
-            const int step = it.second;
-
-            uintptr_t adrl = Arm64::DecodeADRL(findIdaPattern(map_type, ida_pattern, step));
-            if (adrl != 0) return adrl;
-        }
-
-        return 0;
+        return IGameProfile::GetGUObjectArrayPtr();
     }
     uintptr_t GetFrameCount() const override
     {
@@ -118,7 +102,6 @@ public:
 
         return Arm64::Decode_ADRP_ADD(findIdaPattern(map_type, ida_pattern, step));
     }
-
     UE_Offsets *GetOffsets() const override
     {
         static UE_Offsets offsets = UE_DefaultOffsets::UE4_25_27(isUsingCasePreservingName());
@@ -131,81 +114,40 @@ public:
             offsets.FNamePool.BlocksBit = 18;
             offsets.FNamePool.BlocksOff -= sizeof(void *);
 
-            offsets.TUObjectArray.Objects = 0x20;
-            offsets.TUObjectArray.NumElements = 0x4;
-            offsets.TUObjectArray.NumElementsPerChunk = 0x1000;
+            offsets.TUObjectArray.NumElements = sizeof(int32_t);
+            offsets.TUObjectArray.Objects = offsets.TUObjectArray.NumElements + (sizeof(int32_t) * 3);
 
-            offsets.UObject.ClassPrivate = 0x08;
-            offsets.UObject.OuterPrivate = 0x10;
-            offsets.UObject.ObjectFlags = 0x18;
-            offsets.UObject.NamePrivate = 0x1C;
-            offsets.UObject.InternalIndex = 0x24;
+            offsets.UObject.ClassPrivate = sizeof(void *);
+            offsets.UObject.OuterPrivate = offsets.UObject.ClassPrivate + sizeof(void *);
+            offsets.UObject.ObjectFlags = offsets.UObject.OuterPrivate + sizeof(void *);
+            offsets.UObject.NamePrivate = offsets.UObject.ObjectFlags + sizeof(int32_t);
+            offsets.UObject.InternalIndex = offsets.UObject.NamePrivate + offsets.FName.Size;
 
-            offsets.UField.Next = 0x28;
+            offsets.UStruct.PropertiesSize = offsets.UField.Next + (sizeof(void *) * 2) + sizeof(int32_t);
+            offsets.UStruct.SuperStruct = offsets.UStruct.PropertiesSize + sizeof(int32_t);
+            offsets.UStruct.Children = offsets.UStruct.SuperStruct + (sizeof(void *) * 2);
+            offsets.UStruct.ChildProperties = offsets.UStruct.Children + (sizeof(void *) * 3);
 
-            offsets.UStruct.PropertiesSize = 0x3C;
-            offsets.UStruct.SuperStruct = 0x40;
-            offsets.UStruct.Children = 0x50;
-            offsets.UStruct.ChildProperties = 0x68;
+            offsets.UFunction.NumParams = offsets.UStruct.ChildProperties + ((sizeof(void *) + sizeof(int32_t) * 2) * 2) + (sizeof(void *) * 5);
+            offsets.UFunction.ParamSize = offsets.UFunction.NumParams + sizeof(int16_t);
+            offsets.UFunction.EFunctionFlags = offsets.UFunction.ParamSize + sizeof(int16_t) + sizeof(int32_t);
+            offsets.UFunction.Func = offsets.UFunction.EFunctionFlags + (sizeof(int32_t) * 2) + (sizeof(void *) * 3);
 
-            offsets.UEnum.Names = 0x40;
+            offsets.FField.FlagsPrivate = sizeof(void *);
+            offsets.FField.Next = offsets.FField.FlagsPrivate + (sizeof(void *) * 2);
+            offsets.FField.ClassPrivate = offsets.FField.Next + sizeof(void *);
+            offsets.FField.NamePrivate = offsets.FField.ClassPrivate + sizeof(void *);
 
-            offsets.UFunction.NumParams = 0xb0;
-            offsets.UFunction.ParamSize = 0xb2;
-            offsets.UFunction.EFunctionFlags = 0xb8;
-            offsets.UFunction.Func = 0xd8;
-
-            offsets.FField.FlagsPrivate = 0x8;
-            offsets.FField.ClassPrivate = 0x20;
-            offsets.FField.Next = 0x28;
-            offsets.FField.NamePrivate = 0x28;
-
-            offsets.FProperty.Offset_Internal = 0x3C;
-            offsets.FProperty.PropertyFlags = 0x40;
-            offsets.FProperty.ArrayDim = 0x44;
-            offsets.FProperty.ElementSize = 0x48;
-            offsets.FProperty.Size = 0x88;
-
-            /*
-                        offsets.UObject.ClassPrivate = 0x18;
-                        offsets.UObject.OuterPrivate = 0x20;
-                        offsets.UObject.ObjectFlags = 0x28;
-                        offsets.UObject.NamePrivate = 0x2c;
-                        offsets.UObject.InternalIndex = 0x34;
-
-                        offsets.UField.Next = 0x30;
-                        offsets.UStruct.PropertiesSize = 0x4c;
-                        offsets.UStruct.SuperStruct = 0x48+0x8;
-                        offsets.UStruct.Children = 0x58+0x8;
-                        offsets.UStruct.ChildProperties = 0x70+0x8;
-
-                        offsets.UFunction.NumParams = 0xc4;
-                        offsets.UFunction.ParamSize = 0xc6;
-                        offsets.UFunction.EFunctionFlags = 0xcc;
-                        offsets.UFunction.Func = 0xf0;
-
-
-
-                        offsets.FField.FlagsPrivate = sizeof(void *);
-                        offsets.FField.Next = offsets.FField.FlagsPrivate + (sizeof(void *) * 2);
-                        offsets.FField.ClassPrivate = offsets.FField.Next + sizeof(void *);
-                        offsets.FField.NamePrivate = offsets.FField.ClassPrivate + sizeof(void *);
-
-                        offsets.FProperty.ArrayDim = offsets.FField.NamePrivate + GetPtrAlignedOf(offsets.FName.Size) + sizeof(void *);
-                        offsets.FProperty.ElementSize = offsets.FProperty.ArrayDim + sizeof(int32_t);
-                        offsets.FProperty.PropertyFlags = offsets.FProperty.ElementSize + sizeof(int32_t);
-                        offsets.FProperty.Offset_Internal = offsets.FProperty.PropertyFlags + sizeof(int64_t) + sizeof(int32_t);
-                        offsets.FProperty.Size = offsets.FProperty.Offset_Internal + (sizeof(int32_t) * 3) + (sizeof(void *) * 4);
-
-                        offsets.UProperty.ArrayDim = offsets.UField.Next + sizeof(void *);  // sizeof(UField)
-                        offsets.UProperty.ElementSize = offsets.UProperty.ArrayDim + sizeof(int32_t);
-                        offsets.UProperty.PropertyFlags = GetPtrAlignedOf(offsets.UProperty.ElementSize + sizeof(int32_t));
-                        offsets.UProperty.Offset_Internal = offsets.UProperty.PropertyFlags + sizeof(int64_t) + sizeof(int32_t);
-                        offsets.UProperty.Size = GetPtrAlignedOf(offsets.UProperty.Offset_Internal + sizeof(int32_t) + offsets.FName.Size) + (sizeof(void *) * 4);  // sizeof(UProperty)*/
+            offsets.FProperty.ArrayDim = offsets.FField.NamePrivate + GetPtrAlignedOf(offsets.FName.Size) + sizeof(void *);
+            offsets.FProperty.ElementSize = offsets.FProperty.ArrayDim + sizeof(int32_t);
+            offsets.FProperty.PropertyFlags = offsets.FProperty.ElementSize + sizeof(int32_t);
+            offsets.FProperty.Offset_Internal = offsets.FProperty.PropertyFlags + sizeof(int64_t) + sizeof(int32_t);
+            offsets.FProperty.Size = offsets.FProperty.Offset_Internal + (sizeof(int32_t) * 3) + (sizeof(void *) * 4);
         }
 
         return &offsets;
     }
+
 
     std::string GetNameEntryString(uint8_t *entry) const override
     {

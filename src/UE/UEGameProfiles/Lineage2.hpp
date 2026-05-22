@@ -37,29 +37,13 @@ public:
     {
         return false;
     }
-
     uintptr_t GetGUObjectArrayPtr() const override
     {
-        uintptr_t guobjectarray = GetUnrealELF().findSymbol("GUObjectArray");
-        if (guobjectarray == 0)
-        {
-            LOGE("查找 GUObjectArray 符号失败。");
-            return 0;
-        }
-        return guobjectarray;
+        return IGameProfile::GetGUObjectArrayPtr();
     }
-
     uintptr_t GetNamesPtr() const override
     {
-        uintptr_t GNamesInit = GetUnrealELF().findSymbol("_ZN5FName16GetIsInitializedEv");
-        if (GNamesInit == 0)
-        {
-            LOGE("查找 _ZN5FName16GetIsInitializedEv 符号失败。");
-            return 0;
-        }
-
-        uintptr_t adrl = Arm64::Decode_ADRP_ADD(GNamesInit);
-        return adrl ? (adrl + GetPtrAlignedOf(sizeof(bool))) : 0;
+        return IGameProfile::GetNamesPtr();
     }
 
     UE_Offsets *GetOffsets() const override

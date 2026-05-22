@@ -38,6 +38,12 @@ std::vector<std::string> AutoFixProfile::GetAppIDs() const
 
 AutoFixProfile::UEFamily AutoFixProfile::ScanVersionString() const
 {
+    if (_packageHint == "com.tencent.ig"){
+        _versionStr = "4.18";
+         return UEFamily::UE4_18_19;
+    }
+       
+
     static const char *kNeedles[] = {
         "++UE4+Release-",
         "+Release-",
@@ -151,7 +157,7 @@ void AutoFixProfile::DetectVersion() const
             LOGW("[AutoFix] UE version string not found; fallback to UE4.25-4.27");
             _family = UEFamily::UE4_25_27;
         }
-        else if (!_versionStr.empty())
+        else
         {
             LOGI("[AutoFix] UE version: %s", _versionStr.c_str());
         }
@@ -161,8 +167,8 @@ void AutoFixProfile::DetectVersion() const
     {
     case UEFamily::UE4_00_17:
     case UEFamily::UE4_18_19:
-    _useFNamePool = false; _outlineNumber = false; break;
     case UEFamily::UE4_20:
+        _useFNamePool = false; _outlineNumber = false; break;
     case UEFamily::UE4_21:
     case UEFamily::UE4_22:
     case UEFamily::UE4_23_24:
@@ -283,80 +289,7 @@ namespace
 
 uintptr_t AutoFixProfile::GetGUObjectArrayPtr() const
 {
-    // Dumper-7 style: scan starting from GName, +8 each step. For every
-    // candidate ptr, read the first object pointer and check if its FName
-    // decodes to "/Script/CoreUObject". This is the CoreUObject package,
-    // which is *always* present in any UE game and lives in the GUObjectArray.
-    //
-    // Layout (UE4.18+ flat / UE4.23+ chunked, both work the same way at slot 0):
-    //   Objects[0] for chunked = *(*Objects + 0)              // first chunk[0].Object
-    //   Objects[0] for flat    = *Objects                     // first FUObjectItem.Object
-    // Either way, **Ram<uintptr_t>(Ram<uintptr_t>(GUObject + 0x10)) == Objects[0]**
-    // when GUObject points at FUObjectArray header (which has ObjObjects field
-    // at offset 0x10 = 4 * sizeof(int32_t) on UE4).
-    //
-    // Reference: Dumper-7's GetUObject() in main.cpp.
-
-    UE_Offsets *off = GetOffsets();
-    const uintptr_t namesPtr = GetNamesPtr();
-    if (!namesPtr) return 0;
-
-    const uintptr_t objObjectsOff = off->FUObjectArray.ObjObjects;          // 0x10 on UE4.18+
-    const uintptr_t namePrivateOff = off->UObject.NamePrivate;              // try preset first
-    const uintptr_t numChunks = off->TUObjectArray.NumElementsPerChunk;     // 0=flat, !=0=chunked
-    const uintptr_t itemObj  = off->FUObjectItem.Object;
-    (void)off->FUObjectItem.Size;
-
-    // We also try a few alternative NamePrivate offsets in case preset is off.
-    static const uintptr_t kNameOffs[] = {0x18, 0x1c, 0x20, 0x28};
-
-    for (int i = 0; i < 0x300000; ++i)
-    {
-        uintptr_t candObjAddr = namesPtr + 8ULL * (uintptr_t)i;
-
-        // Step 1: read Objects pointer at candidate + ObjObjects.
-        uintptr_t objects = vm_rpm_ptr<uintptr_t>((void *)(candObjAddr + objObjectsOff));
-        if (objects < 0x10000) continue;
-        if (!kPtrValidator.isPtrReadable(objects)) continue;
-
-        // Step 2: read first UObject* (handle chunked vs flat).
-        uintptr_t firstObj = 0;
-        if (numChunks > 0)
-        {
-            uintptr_t chunk0 = vm_rpm_ptr<uintptr_t>((void *)objects);
-            if (!kPtrValidator.isPtrReadable(chunk0)) continue;
-            firstObj = vm_rpm_ptr<uintptr_t>((void *)(chunk0 + itemObj));
-        }
-        else
-        {
-            firstObj = vm_rpm_ptr<uintptr_t>((void *)(objects + itemObj));
-        }
-        if (firstObj < 0x10000 || !kPtrValidator.isPtrReadable(firstObj)) continue;
-
-        // Step 3: decode FName at preset NamePrivate, then alternates.
-        // If we find "/Script/CoreUObject" -> done.
-        for (uintptr_t no : kNameOffs)
-        {
-            int32_t id = vm_rpm_ptr<int32_t>((const void *)(firstObj + no));
-            if (id <= 0 || id > 0x200000) continue;
-            std::string nm = this->GetNameByID(id);
-            if (nm == "/Script/CoreUObject")
-            {
-                if (no != namePrivateOff)
-                {
-                    LOGI("[AutoFix] Adjusting UObject.NamePrivate 0x%lx -> 0x%lx",
-                         (unsigned long)namePrivateOff, (unsigned long)no);
-                    off->UObject.NamePrivate = no;
-                }
-                LOGI("[AutoFix] GUObject @ 0x%lx (Objects=0x%lx, FirstObj=0x%lx, anchor='/Script/CoreUObject')",
-                     (unsigned long)candObjAddr, (unsigned long)objects, (unsigned long)firstObj);
-                return candObjAddr;
-            }
-        }
-    }
-
-    LOGE("[AutoFix] 从 GName 暴力搜索 GUObject 失败");
-    return 0;
+    return IGameProfile::GetGUObjectArrayPtr();
 }
 
 uintptr_t AutoFixProfile::GetFrameCount() const
@@ -437,112 +370,5 @@ uintptr_t AutoFixProfile::GetPhysx() const
 
 uintptr_t AutoFixProfile::GetNamesPtr() const
 {
-    auto ue_elf = GetUnrealELF();
-    if (!ue_elf.isValid())
-    {
-        LOGE("[AutoFix] GetNamesPtr: 无效的 UE ELF (pid=%d)", kMgr.processID());
-        return 0;
-    }
-    UE_Offsets *off = GetOffsets();
-    const bool preferFNamePool = IsUsingFNamePool();
-
-    size_t segCount = 0;
-    size_t segReadable = 0;
-    for (const auto &seg : ue_elf.segments())
-    {
-        ++segCount;
-        if (seg.readable) ++segReadable;
-    }
-    LOGI("[AutoFix] GetNamesPtr: pid=%d base=0x%lx segs=%zu (readable=%zu) preferFNamePool=%d",
-         kMgr.processID(), (unsigned long)ue_elf.base(), segCount, segReadable,
-         preferFNamePool ? 1 : 0);
-
-    auto isByteProperty = [](const char *s) -> bool
-    {
-        return std::strncmp(s, "ByteProperty", 12) == 0;
-    };
-
-    constexpr size_t kPtrSize = sizeof(uintptr_t);
-    constexpr uintptr_t kMinPtr = 0x4FFFFFFFFFULL;
-    constexpr uintptr_t kMaxPtr = 0x7FFFFFFFFFULL;
-    constexpr size_t kChunk = 0x100000;
-
-    for (const auto &seg : ue_elf.segments())
-    {
-        if (!seg.readable) continue;
-
-        std::vector<uint8_t> buf(kChunk);
-        for (size_t base = 0; base + kPtrSize <= seg.length; base += kChunk)
-        {
-            size_t toRead = std::min<size_t>(kChunk, seg.length - base);
-            if (!vm_rpm_ptr((void *)(seg.startAddress + base), buf.data(), toRead)) continue;
-
-            for (size_t i = 0; i + kPtrSize <= toRead; i += kPtrSize)
-            {
-                uintptr_t val = 0;
-                memcpy(&val, buf.data() + i, kPtrSize);
-                if (val < kMinPtr || val > kMaxPtr)
-                    continue;
-
-                uintptr_t candidate = seg.startAddress + base + i;
-                char strBuf0[64] = {};
-                char strBuf1[64] = {};
-                char strBuf2[64] = {};
-
-                auto tryFNamePool = [&]() -> uintptr_t
-                {
-                    if (!vm_rpm_ptr((void *)(val + 0x8), strBuf0, 12) || !isByteProperty(strBuf0))
-                        return 0;
-
-                    uintptr_t poolBase = candidate;
-                    if (off && off->FNamePool.BlocksOff && candidate >= off->FNamePool.BlocksOff)
-                        poolBase -= off->FNamePool.BlocksOff;
-
-                    _useFNamePool = true;
-                    LOGI("[AutoFix] FNamePool @ 0x%lx (slot @ 0x%lx)",
-                         (unsigned long)poolBase, (unsigned long)candidate);
-                    return poolBase;
-                };
-
-                auto tryGNames = [&]() -> uintptr_t
-                {
-                    uintptr_t p0 = vm_rpm_ptr<uintptr_t>((void *)val);
-                    uintptr_t p1 = p0 ? vm_rpm_ptr<uintptr_t>((void *)p0) : 0;
-                    if (p1 && vm_rpm_ptr((void *)(p1 + 0x24), strBuf1, 12) && isByteProperty(strBuf1))
-                    {
-                        _useFNamePool = false;
-                        LOGI("[AutoFix] GNames @ 0x%lx", (unsigned long)candidate);
-                        return candidate;
-                    }
-
-                    uintptr_t q0 = vm_rpm_ptr<uintptr_t>((void *)(val + 0x110));
-                    uintptr_t q1 = q0 ? vm_rpm_ptr<uintptr_t>((void *)q0) : 0;
-                    uintptr_t q2 = q1 ? vm_rpm_ptr<uintptr_t>((void *)q1) : 0;
-                    uintptr_t q3 = q2 ? vm_rpm_ptr<uintptr_t>((void *)q2) : 0;
-                    if (q3 && vm_rpm_ptr((void *)(q3 + 0x24), strBuf2, 12) && isByteProperty(strBuf2))
-                    {
-                        _useFNamePool = false;
-                        LOGI("[AutoFix] GNames @ 0x%lx", (unsigned long)candidate);
-                        return candidate;
-                    }
-
-                    return 0;
-                };
-
-                if (preferFNamePool)
-                {
-                    if (uintptr_t found = tryFNamePool()) return found;
-                    if (uintptr_t found = tryGNames()) return found;
-                }
-                else
-                {
-                    if (uintptr_t found = tryGNames()) return found;
-                    if (uintptr_t found = tryFNamePool()) return found;
-                }
-            }
-        }
-    }
-
-    LOGE("[AutoFix] 暴力搜索 GNames 失败");
-    return 0;
+    return IGameProfile::GetNamesPtr();
 }

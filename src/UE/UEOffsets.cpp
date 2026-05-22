@@ -423,33 +423,6 @@ namespace UE_DefaultOffsets
 
             offsets.TUObjectArray.NumElements = (sizeof(void *) * 2) + sizeof(int32_t);
             offsets.TUObjectArray.NumElementsPerChunk = 65 * 1024;
-
-            // 4.20+ 私改版本里常见 FNamePool 路径，提前装上必备的探测字段，
-            // 否则 GetNameEntryString 走 FNamePool 分支会因空 std::function 抛 bad_function_call。
-            offsets.Config.IsUsingFNamePool = true;
-            offsets.FName.Size = kGetFNameSize(bWITH_CASE_PRESERVING_NAME, false);
-
-            offsets.FNamePool.Stride = bWITH_CASE_PRESERVING_NAME ? 4 : 2;
-            offsets.FNamePool.BlocksBit = 16;
-#ifdef __APPLE__
-            offsets.FNamePool.BlocksOff = 0xD0;
-#else
-#ifdef __LP64__
-            offsets.FNamePool.BlocksOff = 0x40;
-#else
-            offsets.FNamePool.BlocksOff = 0x30;
-#endif
-#endif
-
-            offsets.FNamePoolEntry.Header = bWITH_CASE_PRESERVING_NAME ? 4 : 0;
-            offsets.FNamePoolEntry.GetIsWide = [](uint16_t header)
-            { return (header & 1) != 0; };
-            offsets.FNamePoolEntry.GetLength = [bWITH_CASE_PRESERVING_NAME](uint16_t header) -> size_t
-            {
-                return bWITH_CASE_PRESERVING_NAME ? header >> 1 : header >> 6;
-            };
-
-            offsets.FUObjectArray.ObjObjects = sizeof(int32_t) * 4;
         }
         return offsets;
     }
@@ -461,7 +434,9 @@ namespace UE_DefaultOffsets
         if (!once)
         {
             once = true;
-
+            offsets.Config.isUsingCasePreservingName = bWITH_CASE_PRESERVING_NAME;
+            offsets.Config.IsUsingFNamePool = true;
+            offsets.Config.isUsingOutlineNumberName = false;
             offsets.TUObjectArray.NumElementsPerChunk = 64 * 1024;
         }
         return offsets;

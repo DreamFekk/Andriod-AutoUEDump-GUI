@@ -39,29 +39,9 @@ public:
     {
         return false;
     }
-
     uintptr_t GetGUObjectArrayPtr() const override
     {
-        std::vector<std::pair<std::string, int>> idaPatterns = {
-            {"B4 21 0C 40 B9 ? ? ? ? ? ? ? 91", 5},
-            {"9F E5 00 ? 00 E3 FF ? 40 E3 ? ? A0 E1", -2},
-            {"96 df 02 17 ? ? ? ? 54 ? ? ? ? ? ? ? 91 e1 03 13 aa", 9},
-            {"f4 03 01 2a ? 00 00 34 ? ? ? ? ? ? ? ? ? ? 00 54 ? 00 00 14 ? ? ? ? ? ? ? 91", 0x18},
-            {"69 3e 40 b9 1f 01 09 6b ? ? ? 54 e1 03 13 aa ? ? ? ? f4 4f ? a9 ? ? ? ? ? ? ? 91", 0x18},
-        };
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-
-        for (const auto &it : idaPatterns)
-        {
-            std::string ida_pattern = it.first;
-            const int step = it.second;
-
-            uintptr_t adrl = Arm64::Decode_ADRP_ADD(findIdaPattern(map_type, ida_pattern, step));
-            if (adrl != 0) return adrl;
-        }
-
-        return 0;
+        return IGameProfile::GetGUObjectArrayPtr();
     }
     uintptr_t GetFrameCount() const override
     {
@@ -116,22 +96,7 @@ public:
     }
     uintptr_t GetNamesPtr() const override
     {
-        std::vector<std::pair<std::string, int>> idaPatterns = {
-                {"68 FE 50 ? 88 2E 28 ? 08 21 40 F9", -0x10},
-        };
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-
-        for (const auto &it : idaPatterns)
-        {
-            std::string ida_pattern = it.first;
-            const int step = it.second;
-
-            uintptr_t adrl = Arm64::Decode_ADRP_ADD(findIdaPattern(map_type, ida_pattern, step),8);
-            if (adrl != 0) return adrl;
-        }
-
-        return 0;
+        return IGameProfile::GetNamesPtr();
     }
 
     UE_Offsets *GetOffsets() const override

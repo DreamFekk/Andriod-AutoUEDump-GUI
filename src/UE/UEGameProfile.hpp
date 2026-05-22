@@ -52,7 +52,7 @@ public:
     virtual UE_Offsets *GetOffsets() const = 0;
 
 protected:
-    virtual uintptr_t GetGUObjectArrayPtr() const = 0;
+    virtual uintptr_t GetGUObjectArrayPtr() const;
     virtual uintptr_t GetMatrix()  const = 0;
     virtual uintptr_t GetPhysx() const = 0;
     virtual uintptr_t GetFrameCount() const = 0;
@@ -60,7 +60,7 @@ protected:
     virtual uintptr_t GetNativeAndroidApp() const;
     virtual uintptr_t GetProcessEvent() const;
     // GNames / NamePoolData
-    virtual uintptr_t GetNamesPtr() const = 0;
+    virtual uintptr_t GetNamesPtr() const;
 
     virtual uint8_t *GetNameEntry(int32_t id) const;
     // can override if decryption is needed

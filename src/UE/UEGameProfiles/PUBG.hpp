@@ -39,16 +39,10 @@ public:
         return false;
     }
 
-    uintptr_t GetGUObjectArrayPtr() const override
+        uintptr_t GetGUObjectArrayPtr() const override
     {
-        std::string ida_pattern = "? ? ? B9 ? ? ? B9 1F 01 09 6B ? ? ? 54 ? ? ? ? ? ? ? 91 E1 03 14 AA ? ? ? 97 ? ? ? 91 ? ? ? 91";
-        const int step = 0x10;
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-        //printf("%lx\n", Arm64::Decode_ADRP_ADD(findIdaPattern(map_type, ida_pattern, step)));
-        return Arm64::Decode_ADRP_ADD(findIdaPattern(map_type, ida_pattern, step)) + 0xb8;
-    }
-    void print_func() const
+        return IGameProfile::GetGUObjectArrayPtr();
+    }    void print_func() const
     {
         auto base = GetUEVars()->GetBaseAddress();
         //printf("0x%lx\n", base);
@@ -66,17 +60,8 @@ public:
     }
     uintptr_t GetNamesPtr() const override
     {
-        print_func();
-        // auto base = GetUEVars()->GetBaseAddress();
-        // return base + 0x14e33c18;
-        std::string ida_pattern = "? ? ? ? ? ? ? D0 ? ? ? F9 ? ? ? 91 ? ? ? 91 ? ? ? 94";
-        const int step = 0x0;
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-        //printf("%lx\n", findIdaPattern(map_type, ida_pattern, step));
-        return Arm64::Decode_ADRP_LDR(findIdaPattern(map_type, ida_pattern, step),0x8);
+        return IGameProfile::GetNamesPtr();
     }
-
     uintptr_t GetFrameCount() const override
     {
         PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;

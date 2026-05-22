@@ -39,27 +39,9 @@ public:
     {
         return false;
     }
-
     uintptr_t GetGUObjectArrayPtr() const override
     {
-        std::vector<std::pair<std::string, int>> idaPatterns = {
-            {"0B ? 40 B9 7F 01 0A 6B AD ? 00 54 08 ? 40 F9", -8},
-            {"2B ? 40 B9 7F 01 0A 6B CD ? 00 54 29 ? 40 F9", -8},
-        };
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-
-        for (const auto &it : idaPatterns)
-        {
-            std::string ida_pattern = it.first;
-            const int step = it.second;
-
-            uintptr_t adrl = Arm64::Decode_ADRP_LDR(findIdaPattern(map_type, ida_pattern, step));
-
-            if (adrl != 0) return vm_rpm_ptr<uintptr_t>((void *)adrl);
-        }
-
-        return 0;
+        return IGameProfile::GetGUObjectArrayPtr();
     }
     uintptr_t GetFrameCount() const override
     {
@@ -114,36 +96,7 @@ public:
     }
     uintptr_t GetNamesPtr() const override
     {
-        std::vector<std::pair<std::string, int>> idaPatterns = {
-            // FNameEntry const* FName::GetEntry(FNameEntryId id);
-            {"F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 ? ? ? ? ? ? ? ? A8 02 ? 39", 0x18},
-            {"F4 4F 01 A9 FD 7B 02 A9 FD 83 00 91 ? ? ? ? A8 02 ? 39", 0x24},
-
-            // DebugDump
-            {"fd 7b 01 a9 fd 43 00 91 ? ? ? ? 89 ? ? 39 f3 03 08 aa c9 00 00 37 ? ? ? ? ? ? ? 91", 0x18},
-
-            {"f8 c8 ? ? 39 c8 00 00 37 ? ? ? ? ? ? ? 91", 9},
-
-            // GetPlainName ToString AppendString GetStringLength
-            {"02 ? 91 C8 00 00 37 ? ? ? ? ? ? ? 91", 7},
-
-            {"39 C8 00 00 37 ? ? ? ? ? ? ? 91 ? ? ? 97 ? 00 80 52 ? ? ? 39", 5},
-            {"C8 00 00 37 ? ? ? ? ? ? ? 91 ? ? ? 97 ? 00 80 52", 4},
-            {"C8 00 00 37 ? ? ? ? ? ? ? 91 ? ? ? 97", 4},
-        };
-
-        PATTERN_MAP_TYPE map_type = isEmulator() ? PATTERN_MAP_TYPE::ANY_R : PATTERN_MAP_TYPE::ANY_X;
-
-        for (const auto &it : idaPatterns)
-        {
-            std::string ida_pattern = it.first;
-            const int step = it.second;
-
-            uintptr_t adrl = Arm64::Decode_ADRP_ADD(findIdaPattern(map_type, ida_pattern, step));
-            if (adrl != 0) return adrl;
-        }
-
-        return 0;
+        return IGameProfile::GetNamesPtr();
     }
 
     UE_Offsets *GetOffsets() const override
