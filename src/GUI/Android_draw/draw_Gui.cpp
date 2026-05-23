@@ -103,7 +103,7 @@ void Layout_tick_UI(bool *main_thread_flag) {
     { 
         ImGui::SetNextWindowSize(ImVec2(980.0f, 760.0f), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(ImVec2(120.0f, 140.0f), ImGuiCond_FirstUseEver);
-        ImGui::Begin("AutoUEDump  创作者: 曦曦(DreamFekk) https://github.com/DreamFekk", main_thread_flag);
+        ImGui::Begin("UnrealMemoryTools  创作者: 曦曦(DreamFekk) https://github.com/DreamFekk", main_thread_flag);
         if (::permeate_record_ini) {
             ImGui::SetWindowPos({LastCoordinate.Pos_x, LastCoordinate.Pos_y});
             ImGui::SetWindowSize({LastCoordinate.Size_x, LastCoordinate.Size_y});

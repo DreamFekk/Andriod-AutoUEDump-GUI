@@ -7,7 +7,7 @@ set(CMAKE_SYSTEM_VERSION 30)
 set(ANDROID_PLATFORM 30)
 set(ANDROID_ABI arm64-v8a)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/outputs/${ANDROID_ABI})
-project(AutoUEDump)
+project(UnrealMemoryTools)
 
 set(KITTYMEMORY_PATH KittyMemoryEx)
 file(GLOB KITTYMEMORY_SRC ${KITTYMEMORY_PATH}/*.cpp)
@@ -45,7 +45,7 @@ include_directories(
         src/GUI/native_surface)
 link_libraries(-llog -landroid -lEGL -lGLESv3 -lvulkan -lz -ldl)
 
-add_executable(AutoUEDump ${UE_SRC} ${UE_PROFILE_SRC} ${AUTOFIX_SRC} ${GUI_SRC} src/executable.cpp src/Dumper.cpp src/UPackageGenerator.cpp src/SDKExplorer.cpp ${KITTYMEMORY_SRC} ${DEPS_PATH}/fmt/format.cc
+add_executable(UnrealMemoryTools ${UE_SRC} ${UE_PROFILE_SRC} ${AUTOFIX_SRC} ${GUI_SRC} src/executable.cpp src/Dumper.cpp src/UPackageGenerator.cpp src/SDKExplorer.cpp ${KITTYMEMORY_SRC} ${DEPS_PATH}/fmt/format.cc
         src/AutoFix/NativeFunctionResolver.cpp
         src/AutoFix/PropertyOffsetFinder.cpp
         src/AutoFix/StructLayout.cpp
@@ -53,12 +53,12 @@ add_executable(AutoUEDump ${UE_SRC} ${UE_PROFILE_SRC} ${AUTOFIX_SRC} ${GUI_SRC} 
         src/Utils/KittyCmdln.cpp
         src/Utils/ProgressUtils.cpp)
 
-target_compile_definitions(AutoUEDump PRIVATE
+target_compile_definitions(UnrealMemoryTools PRIVATE
         kEXECUTABLE
         VK_USE_PLATFORM_ANDROID_KHR
         IMGUI_IMPL_VULKAN_NO_PROTOTYPES
         IMGUI_ENABLE_FREETYPE
         IMGUI_DISABLE_DEBUG_TOOLS)
 
-target_link_libraries(AutoUEDump PRIVATE
+target_link_libraries(UnrealMemoryTools PRIVATE
         ${CMAKE_SOURCE_DIR}/src/GUI/ImGui/misc/git_freetype/${ANDROID_ABI}/libfreetype.a)

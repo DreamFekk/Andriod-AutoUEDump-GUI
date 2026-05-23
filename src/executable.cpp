@@ -48,7 +48,7 @@ std::vector<IGameProfile *> UE_Games = {
 
 namespace
 {
-    constexpr const char *kOutputDirectory = "/sdcard/AutoUEDump";
+    constexpr const char *kOutputDirectory = "/sdcard/UnrealMemoryTools";
     constexpr size_t kMaxLogLines = 1500;
 
     enum class UiLang { ZH = 0, EN = 1 };
@@ -1059,7 +1059,7 @@ void RenderAutoUEDumpPanel(bool *main_thread_flag)
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
 
     // ========== 顶部信息条 ==========
-    ImGui::Text("AutoUEDump  |  %s %s", Tr("版本", "Version"), kUEDUMPER_VERSION);
+    ImGui::Text("UnrealMemoryTools  |  %s %s", Tr("版本", "Version"), kUEDUMPER_VERSION);
     ImGui::SameLine(0.0f, 12.0f);
     ImGui::TextDisabled("  %s: %s", Tr("输出", "Output"), kOutputDirectory);
     ImGui::Dummy(ImVec2(0.0f, lineGap));
@@ -1403,7 +1403,7 @@ int main()
     ::abs_ScreenX = (::displayInfo.height > ::displayInfo.width ? ::displayInfo.height : ::displayInfo.width);
     ::abs_ScreenY = (::displayInfo.height < ::displayInfo.width ? ::displayInfo.height : ::displayInfo.width);
 
-    ::window = android::ANativeWindowCreator::Create("AutoUEDump", native_window_screen_x, native_window_screen_y, permeate_record);
+    ::window = android::ANativeWindowCreator::Create("UnrealMemoryTools", native_window_screen_x, native_window_screen_y, permeate_record);
     if (!::window)
     {
         LOGE("创建 ANativeWindow 失败。");
