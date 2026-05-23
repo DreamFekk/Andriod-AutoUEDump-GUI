@@ -1,4 +1,4 @@
-# AutoUEDump
+# UnrealMemoryTools
 
 Android Unreal Engine Dumper with a Vulkan / ImGui overlay UI, dedicated game profiles, and a generic `AutoFix` pipeline.
 
@@ -14,14 +14,14 @@ Android Unreal Engine Dumper with a Vulkan / ImGui overlay UI, dedicated game pr
 
 ### Overview
 
-`AutoUEDump` is an external (out-of-process) Unreal Engine dumper for Android. It runs as a regular ELF binary and reads the target game memory through `KittyMemoryEx`. The previous CLI workflow has been replaced with a Vulkan + ImGui overlay UI inspired by `AndUEProber`, and the dump pipeline has been split into two explicit steps: **Probe** then **Dump**.
+`UnrealMemoryTools` is an external (out-of-process) Unreal Engine dumper for Android. It runs as a regular ELF binary and reads the target game memory through `KittyMemoryEx`. The previous CLI workflow has been replaced with a Vulkan + ImGui overlay UI inspired by `AndUEProber`, and the dump pipeline has been split into two explicit steps: **Probe** then **Dump**.
 
 The program ships with both:
 
 - **Dedicated profiles** — hardcoded offsets for known games
 - **AutoFix** — a generic UE4 / UE5 fallback that brute-force locates `GNames`, `FNamePool`, `GUObjectArray`, etc., and patches struct offsets at runtime
 
-If a dedicated profile fails to initialize on a newer game build, AutoUEDump automatically falls back to AutoFix and clearly tells you so in the UI.
+If a dedicated profile fails to initialize on a newer game build, UnrealMemoryTools automatically falls back to AutoFix and clearly tells you so in the UI.
 
 ### Preview
 
@@ -40,7 +40,7 @@ If a dedicated profile fails to initialize on a newer game build, AutoUEDump aut
 
 ### Output files
 
-Default output root: `/sdcard/AutoUEDump/<package>/`
+Default output root: `/sdcard/UnrealMemoryTools/<package>/`
 
 | File | Purpose |
 |---|---|
@@ -123,20 +123,20 @@ Toolchain:
 - clang with C++20
 
 ```bash
-cd AutoUEdump
+cd UnrealMemoryTools
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j4
 ```
 
-The output binary lands in `AutoUEdump/outputs/arm64-v8a/`.
+The output binary lands in `UnrealMemoryTools/outputs/arm64-v8a/`.
 
 > Tip: building under a Chinese-character path may trigger `GetOverlappedResult` errors with Ninja on Windows. Prefer building inside CLion or use an ASCII path.
 
 ### Run
 
 ```bash
-adb push AutoUEDump /data/local/tmp/
-adb shell "su -c 'chmod 777 /data/local/tmp/AutoUEDump && /data/local/tmp/AutoUEDump'"
+adb push UnrealMemoryTools /data/local/tmp/
+adb shell "su -c 'chmod 777 /data/local/tmp/UnrealMemoryTools && /data/local/tmp/UnrealMemoryTools'"
 ```
 
 A Vulkan overlay window will appear on the device. Root or equivalent access is required to read other processes' memory.
@@ -160,7 +160,7 @@ For learning, reverse-engineering practice, and personal research only. **Do not
 
 ### 简介
 
-`AutoUEDump` 是一个面向 Android Unreal Engine 游戏的**外部** Dumper（不注入、不 hook，纯 `/proc/<pid>/mem` 读内存）。基于 `AndUEDumper` 改造而来，并融合了 `Dumper-7` 风格的 SDK 输出与 `AndUEProber` 风格的两步交互。
+`UnrealMemoryTools` 是一个面向 Android Unreal Engine 游戏的**外部** Dumper（不注入、不 hook，纯 `/proc/<pid>/mem` 读内存）。基于 `AndUEDumper` 改造而来，并融合了 `Dumper-7` 风格的 SDK 输出与 `AndUEProber` 风格的两步交互。
 
 旧版命令行交互已经全部移除，改成 **Vulkan + ImGui 悬浮 UI**，流程拆成两步：**探针 → Dump**。
 
@@ -188,7 +188,7 @@ For learning, reverse-engineering practice, and personal research only. **Do not
 
 ### 输出文件
 
-默认输出根目录：`/sdcard/AutoUEDump/<package>/`
+默认输出根目录：`/sdcard/UnrealMemoryTools/<package>/`
 
 | 文件 | 说明 |
 |---|---|
@@ -271,20 +271,20 @@ I: 使用自动 Profile (UE4/UE5 通用) 进行探测。
 - 支持 C++20 的 clang
 
 ```bash
-cd AutoUEdump
+cd UnrealMemoryTools
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j4
 ```
 
-产物在 `AutoUEdump/outputs/arm64-v8a/`。
+产物在 `UnrealMemoryTools/outputs/arm64-v8a/`。
 
 > 注意：Windows 上 Ninja 在中文路径下会偶发 `GetOverlappedResult` 报错。建议在 CLion 内构建，或换成纯英文路径。
 
 ### 运行
 
 ```bash
-adb push AutoUEDump /data/local/tmp/
-adb shell "su -c 'chmod 777 /data/local/tmp/AutoUEDump && /data/local/tmp/AutoUEDump'"
+adb push UnrealMemoryTools /data/local/tmp/
+adb shell "su -c 'chmod 777 /data/local/tmp/UnrealMemoryTools && /data/local/tmp/UnrealMemoryTools'"
 ```
 
 设备上会出现 Vulkan 悬浮窗。读取其它进程内存需要 root 或等价权限。
